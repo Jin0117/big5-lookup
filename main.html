@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>Big5 內碼查詢</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    input { width: 300px; padding: 5px; }
+    table { border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #333; padding: 8px 12px; text-align: center; }
+    th { background-color: #f2f2f2; }
+  </style>
+</head>
+<body>
+  <h2>Big5 內碼查詢工具</h2>
+  <p>輸入中文字，查詢其 Big5 內碼：</p>
+  <input type="text" id="inputText" placeholder="輸入文字，例如：你好">
+  <button onclick="lookupBig5()">查詢</button>
+
+  <table id="resultTable">
+    <thead>
+      <tr>
+        <th>字元</th>
+        <th>UTF‑8 編碼</th>
+        <th>Unicode</th>
+        <th>Big5 內碼</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    let big5Map = {};
+
+    // 載入 moztw Big5 對照表
+    fetch("https://moztw.org/docs/big5/table/big5_2003-b2u.txt")
+  .then(response => response.text())
+  .then(text => {
+    const lines = text.split("\n");
+    for (const line of lines) {
+      const parts = line.trim().split(/\s+/);
+      if (parts.length === 2) {
+        const big5 = parts[0].replace("0x", "").toUpperCase();     // 例如 8140
+        const unicode = parts[1].replace("0x", "").toUpperCase();  // 例如 EEB8
+        big5Map[unicode] = big5;
+      }
+    }
+  });
+
+    function lookupBig5() {
+      const text = document.getElementById("inputText").value;
+      const tbody = document.getElementById("resultTable").querySelector("tbody");
+      tbody.innerHTML = "";
+
+      for (const char of text) {
+        // Unicode code point
+        const codePoint = char.codePointAt(0);
+        const unicodeHex = codePoint.toString(16).toUpperCase().padStart(4, "0"); // 例如 4F60
+        const unicodeKey = unicodeHex; // 用 U+xxxx 格式查表
+
+        // UTF‑8 編碼
+        const utf8Bytes = new TextEncoder().encode(char);
+        const utf8Hex = Array.from(utf8Bytes)
+          .map(b => b.toString(16).toUpperCase().padStart(2, "0"))
+          .join("");
+
+        // 查 Big5
+        const big5Hex = big5Map[unicodeKey] || "未定義";
+
+        const row = `<tr>
+          <td>${char}</td>
+          <td>${utf8Hex}</td>
+          <td>${unicodeKey}</td>
+          <td>${big5Hex}</td>
+        </tr>`;
+        tbody.innerHTML += row;
+      }
+    }
+  </script>
+</body>
+</html>
